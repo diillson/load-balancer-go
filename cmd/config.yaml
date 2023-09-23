@@ -1,0 +1,4 @@
+servers:
+  - "https://globo.com"
+  - "http://example2.com"
+  - "http://example3.com"

@@ -15,7 +15,7 @@ func main() {
 	logging.InitLogger()
 
 	if err := config.LoadConfig("."); err != nil {
-		logrus.Fatal("Failed to load configuration:", err)
+		logrus.Warn("No configuration file found. Continuing without it:", err)
 	}
 
 	serversConfig := viper.GetStringSlice("servers")
@@ -30,6 +30,7 @@ func main() {
 	}
 
 	lb := &loadbalancer.SimpleLoadBalancer{Servers: servers}
+	lb.Initialize()
 	handler := &api.Handler{LB: lb}
 
 	r := gin.Default() // Inicializa o router do Gin

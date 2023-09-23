@@ -62,11 +62,12 @@ func (lb *SimpleLoadBalancer) ReleaseBackend(server *Server) {
 }
 
 func (lb *SimpleLoadBalancer) AddBackend(server *Server) {
-	server.Healthy = true
+	server.Healthy = false
 
 	lb.mux.Lock()
 	lb.Servers = append(lb.Servers, server)
 	lb.mux.Unlock()
+	server.CheckHealth()
 }
 
 func (lb *SimpleLoadBalancer) RemoveBackend(serverURL *url.URL) {
@@ -100,6 +101,14 @@ func (lb *SimpleLoadBalancer) CheckAllBackendsHealth() {
 	}
 }
 
+func (lb *SimpleLoadBalancer) Initialize() {
+	// Iniciar verificações de saúde.
+	lb.StartHealthChecks()
+
+	// Verificar a saúde inicial de todos os servidores.
+	lb.CheckAllBackendsHealth()
+}
+
 func (s *Server) CheckHealth() {
 	// Defina um timeout para a requisição para garantir que ela não fique pendente por muito tempo.
 	client := &http.Client{
@@ -110,7 +119,7 @@ func (s *Server) CheckHealth() {
 	resp, err := client.Get(s.URL.String() + "/health")
 
 	// Se ocorrer um erro ou o status da resposta não for 200, marque o servidor como não saudável.
-	if err != nil || resp.StatusCode != http.StatusOK {
+	if err != nil || resp.StatusCode >= http.StatusInternalServerError {
 		s.Healthy = false
 		return
 	}

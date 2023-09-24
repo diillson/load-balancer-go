@@ -2,12 +2,15 @@ package api
 
 import (
 	"github.com/diillson/load-balancer-go/internal/loadbalancer"
+	"github.com/diillson/load-balancer-go/pkg/logging"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"time"
 )
 
 type Handler struct {
@@ -28,29 +31,38 @@ func (h *Handler) ProxyHandler(c *gin.Context) {
 		return
 	}
 
-	proxy := httputil.NewSingleHostReverseProxy(server.URL)
+	defer h.LB.ReleaseBackend(server) // Garantir que a conexão seja liberada ao finalizar a requisição
 
-	// Adiciona/modifica o User-Agent ou qualquer header na requisição antes de ser encaminhada
-	proxy.Director = func(req *http.Request) {
-		req.URL.Scheme = server.URL.Scheme
-		req.URL.Host = server.URL.Host
-		req.URL.Path = singleJoiningSlash(server.URL.Path, req.URL.Path)
+	proxy := &httputil.ReverseProxy{
+		Director: func(req *http.Request) {
+			req.URL.Scheme = server.URL.Scheme
+			req.URL.Host = server.URL.Host
+			req.URL.Path = singleJoiningSlash(server.URL.Path, req.URL.Path)
 
-		req.Host = server.URL.Host // Defina o cabeçalho 'Host' para o do servidor alvo evitar validação de referência cruzada
+			// Defina o cabeçalho 'Host' para o do servidor alvo para evitar validação de referência cruzada
+			req.Host = server.URL.Host
 
-		// Adicione o cabeçalho que deseja manipular ao fazer a requisição no servidor alvo
-		//req.Header.Set("User-Agent", "PostmanRuntime/7.32.3")
-		//req.Header.Set("Connection", "close")
-
-		//for name, values := range req.Header {
-		//	for _, value := range values {
-		//		logrus.Infof("Header: %s: %s", name, value)
-		//	}
-		//}
+			// Adicione o cabeçalho que deseja manipular ao fazer a requisição no servidor alvo
+			//req.Header.Set("User-Agent", "PostmanRuntime/7.32.3")
+			//req.Header.Set("Connection", "close")
+		},
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+				DualStack: true,
+			}).DialContext,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+		ErrorLog: logging.GetLogrusAdapter(), // para integrar com o logger do logrus
 	}
 
 	proxy.ServeHTTP(c.Writer, c.Request)
-	h.LB.ReleaseBackend(server)
 }
 
 // função `singleJoiningSlash` para corrigir os paths

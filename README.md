@@ -53,26 +53,26 @@ A aplicação foi desenvolvida considerando boas práticas de programação e de
 
 ### MacOS
     #amd64
-    GOOS=darwin GOARCH=amd64 go build -o balancer cmd/main.go
+    GOOS=darwin GOARCH=amd64 go build -o cmd/balancer cmd/main.go
 
     #arm64
-    GOOS=darwin GOARCH=arm64 go build -o balancer cmd/main.go
+    GOOS=darwin GOARCH=arm64 go build -o cmd/balancer cmd/main.go
 
 ### Linux
 
     # amd64
-    $ GOOS=linux GOARCH=amd64 go build -o balancer cmd/main.go
+    $ GOOS=linux GOARCH=amd64 go build -o cmd/balancer cmd/main.go
 
     # arm64
-    $ GOOS=linux GOARCH=arm64 go build -o balancer cmd/main.go
+    $ GOOS=linux GOARCH=arm64 go build -o cmd/balancer cmd/main.go
 
 ### Windows
 
     # amd64
-    $ GOOS=windows GOARCH=amd64 go build -o balancer.exe cmd/main.go
+    $ GOOS=windows GOARCH=amd64 go build -o cmd/balancer.exe cmd/main.go
     
     # arm64
-    $ GOOS=windows GOARCH=arm64 go build -o balancer.exe cmd/main.go
+    $ GOOS=windows GOARCH=arm64 go build -o cmd/balancer.exe cmd/main.go
 
 # **Execução**
 

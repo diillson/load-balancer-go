@@ -13,7 +13,7 @@ type Backend struct {
 
 func (b *Backend) CheckHealth() {
 	resp, err := http.Get(b.URL.String() + "/health")
-	if err != nil || resp.StatusCode != http.StatusOK {
+	if err != nil || resp.StatusCode >= http.StatusInternalServerError {
 		b.Healthy = false
 		return
 	}

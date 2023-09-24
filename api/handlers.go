@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 )
 
 type Handler struct {
@@ -28,8 +29,41 @@ func (h *Handler) ProxyHandler(c *gin.Context) {
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(server.URL)
+
+	// Adiciona/modifica o User-Agent ou qualquer header na requisição antes de ser encaminhada
+	proxy.Director = func(req *http.Request) {
+		req.URL.Scheme = server.URL.Scheme
+		req.URL.Host = server.URL.Host
+		req.URL.Path = singleJoiningSlash(server.URL.Path, req.URL.Path)
+
+		req.Host = server.URL.Host // Defina o cabeçalho 'Host' para o do servidor alvo evitar validação de referência cruzada
+
+		// Adicione o cabeçalho que deseja manipular ao fazer a requisição no servidor alvo
+		//req.Header.Set("User-Agent", "PostmanRuntime/7.32.3")
+		//req.Header.Set("Connection", "close")
+
+		for name, values := range req.Header {
+			for _, value := range values {
+				logrus.Infof("Header: %s: %s", name, value)
+			}
+		}
+	}
+
 	proxy.ServeHTTP(c.Writer, c.Request)
 	h.LB.ReleaseBackend(server)
+}
+
+// função `singleJoiningSlash` para corrigir os paths
+func singleJoiningSlash(a, b string) string {
+	aslash := strings.HasSuffix(a, "/")
+	bslash := strings.HasPrefix(b, "/")
+	switch {
+	case aslash && bslash:
+		return a + b[1:]
+	case !aslash && !bslash:
+		return a + "/" + b
+	}
+	return a + b
 }
 
 func (h *Handler) AddServerHandler(c *gin.Context) {

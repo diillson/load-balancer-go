@@ -49,4 +49,52 @@ A aplicação foi desenvolvida considerando boas práticas de programação e de
 
 * **Configuração Dinâmica:** Viper foi usado para permitir uma configuração flexível, permitindo adicionar ou remover servidores de um arquivo **config.yaml**.
 
+# **Build**
+
+### MacOS
+    #amd64
+    GOOS=darwin GOARCH=amd64 go build -o balancer cmd/main.go
+
+    #arm64
+    GOOS=darwin GOARCH=arm64 go build -o balancer cmd/main.go
+
+### Linux
+
+    # amd64
+    $ GOOS=linux GOARCH=amd64 go build -o balancer cmd/main.go
+
+    # arm64
+    $ GOOS=linux GOARCH=arm64 go build -o balancer cmd/main.go
+
+### Windows
+
+    # amd64
+    $ GOOS=windows GOARCH=amd64 go build -o balancer.exe cmd/main.go
+    
+    # arm64
+    $ GOOS=windows GOARCH=arm64 go build -o balancer.exe cmd/main.go
+
+# **Execução**
+
+    $ cd cmd/
+    $ ./balancer
+
+# **Interações**
+
+### Adicionando um novo servidor
+
+    $ curl -X POST -H "Content-Type: application/json" -d '{"URL": "http://example2.com:80", "ActiveConns": 0, "Healthy": true}' http://localhost:3000/addServer
+
+### Listando todos os servidores, informações e status de saúde.
+
+    $ curl -X GET http://localhost:3000/list
+
+### Removendo um servidor
+
+    $ curl -X DELETE -H "Content-Type: application/json" -d '{"URL": "http://example2.com:80"}' http://localhost:3000/removeServer
+
+### Verificando a saúde do LoadBalancer
+
+    $ curl -X GET http://localhost:3000/health
+
 Em resumo, construi um load balancer "simples", mas poderoso, usando Go. A aplicação é eficiente, fácil de configurar e adaptável a mudanças. A combinação de Go com bibliotecas modernas e um design de código cuidadoso torna a solução robusta e pronta para cenários do mundo real. Se você está procurando uma introdução prática ao balanceamento de carga ou deseja entender melhor como implementar soluções de infraestrutura em Go, este projeto serve como um excelente ponto de partida.

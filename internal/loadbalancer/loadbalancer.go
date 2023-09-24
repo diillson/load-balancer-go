@@ -41,7 +41,6 @@ func (lb *SimpleLoadBalancer) GetBackend() (*Server, error) {
 	// Implementação de menor conexão
 	var leastConnServer *Server
 	for _, server := range lb.Servers {
-		// We want to make sure the server is healthy before considering it
 		if server.Healthy {
 			if leastConnServer == nil || atomic.LoadInt32(&server.ActiveConns) < atomic.LoadInt32(&leastConnServer.ActiveConns) {
 				leastConnServer = server
@@ -67,7 +66,7 @@ func (lb *SimpleLoadBalancer) AddBackend(server *Server) {
 	lb.mux.Lock()
 	lb.Servers = append(lb.Servers, server)
 	lb.mux.Unlock()
-	server.CheckHealth()
+	go server.CheckHealth()
 }
 
 func (lb *SimpleLoadBalancer) RemoveBackend(serverURL *url.URL) {
@@ -76,6 +75,7 @@ func (lb *SimpleLoadBalancer) RemoveBackend(serverURL *url.URL) {
 
 	for i, server := range lb.Servers {
 		if server.URL.String() == serverURL.String() {
+			atomic.StoreInt32(&server.ActiveConns, 0) // Resetting active connections for removed server
 			// Remove o servidor da lista
 			lb.Servers = append(lb.Servers[:i], lb.Servers[i+1:]...)
 			return
@@ -86,18 +86,15 @@ func (lb *SimpleLoadBalancer) RemoveBackend(serverURL *url.URL) {
 func (lb *SimpleLoadBalancer) StartHealthChecks() {
 	ticker := time.NewTicker(HealthCheckInterval)
 	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				lb.CheckAllBackendsHealth()
-			}
+		for range ticker.C {
+			lb.CheckAllBackendsHealth()
 		}
 	}()
 }
 
 func (lb *SimpleLoadBalancer) CheckAllBackendsHealth() {
 	for _, backend := range lb.Servers {
-		backend.CheckHealth()
+		go backend.CheckHealth()
 	}
 }
 
@@ -113,13 +110,19 @@ func (s *Server) CheckHealth() {
 	// Defina um timeout para a requisição para garantir que ela não fique pendente por muito tempo.
 	client := &http.Client{
 		Timeout: 5 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:      10,
+			IdleConnTimeout:   30 * time.Second,
+			DisableKeepAlives: true,
+			MaxConnsPerHost:   10,
+		},
 	}
 
 	// Fazer uma requisição GET para o endpoint /health do servidor.
 	resp, err := client.Get(s.URL.String() + "/health")
 
 	// Se ocorrer um erro ou o status da resposta não for 200, marque o servidor como não saudável.
-	if err != nil || resp.StatusCode >= http.StatusInternalServerError {
+	if err != nil || (resp.StatusCode != http.StatusOK && resp.StatusCode < http.StatusInternalServerError) {
 		s.Healthy = false
 		return
 	}

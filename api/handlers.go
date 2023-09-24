@@ -42,11 +42,11 @@ func (h *Handler) ProxyHandler(c *gin.Context) {
 		//req.Header.Set("User-Agent", "PostmanRuntime/7.32.3")
 		//req.Header.Set("Connection", "close")
 
-		for name, values := range req.Header {
-			for _, value := range values {
-				logrus.Infof("Header: %s: %s", name, value)
-			}
-		}
+		//for name, values := range req.Header {
+		//	for _, value := range values {
+		//		logrus.Infof("Header: %s: %s", name, value)
+		//	}
+		//}
 	}
 
 	proxy.ServeHTTP(c.Writer, c.Request)
